@@ -1,3 +1,14 @@
+# IDEA editor filess
+.idea
+
+# Sandbox Jupyter notebooks
+Sandbox*.ipynb
+.ipynb_checkpoints
+
+# don't judge me! :-)
+Untitled*.ipynb
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
