@@ -72,8 +72,8 @@ def get_auth_cookies(username=None, password=None, **kwargs):
             data={
                 "csrfmiddlewaretoken": csrf_token,
                 "next": "/oneUp/courses",
-                "username": username or oneupsdk.config["username"],
-                "password": password or oneupsdk.config["password"],
+                "username": username or oneupsdk.integration.config["username"],
+                "password": password or oneupsdk.integration.config["password"],
                 "login": "Login",
             },
         )
