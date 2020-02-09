@@ -2,6 +2,14 @@
 
 This is a Python SDK to allow for the scripting and integration of the [OneUp Learning platform](https://oneup.wssu.edu/login) developed by West-Salem State University.
 
+## Installation
+
+The package is available through Python's package management system:
+
+```shell
+pip install oneupsdk
+```
+
 ## Configuration
 
 You can request an account by contacting [Darina Dicheva](https://www.wssu.edu/profiles/dichevad/index.html). Once you have an account, create a `config.yaml` file containing your authentication information. This file is parsed by the SDK to authenticate your API calls.
