@@ -99,6 +99,17 @@ def get_auth_cookies(username=None, password=None, **kwargs):
             return data
 
 
+def get_csrf_token(**kwargs):
+    """
+    Return the CSRF token for the active session.
+    """
+    if last_cookies is None:
+        get_auth_cookies(**kwargs)
+
+    if last_cookies is not None:
+        return last_cookies.get("csrftoken")
+
+
 def request(endpoint=None, url=None, data=None, json=None, **kwargs):
     # type: (_typing.Optional[str], _typing.Optional[str], _typing.Optional[_typing.Union[str, dict]], _typing.Optional[dict], dict) -> _requests.Response
     """
