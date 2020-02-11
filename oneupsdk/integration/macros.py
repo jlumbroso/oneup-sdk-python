@@ -44,7 +44,7 @@ def get_instructor_courses():
     if r.status_code != 200:
         return []
 
-    s = _bs4.BeautifulSoup(r.content)
+    s = _bs4.BeautifulSoup(r.content, features="html.parser")
     t = oneupsdk.integration.util.find_table(s, header_query="Your Courses")
     if t is None:
         return []
@@ -126,7 +126,7 @@ def get_enrolled_students():
     if r.status_code != 200:
         return list()
 
-    s = _bs4.BeautifulSoup(r.content)
+    s = _bs4.BeautifulSoup(r.content, features="html.parser")
     t = oneupsdk.integration.util.find_table(s, "Avatar")
     if t is None:
         return list()
@@ -184,7 +184,7 @@ def get_student_by_id(user_id):
     if r.status_code != 200:
         return
 
-    s = _bs4.BeautifulSoup(r.content)
+    s = _bs4.BeautifulSoup(r.content, features="html.parser")
 
     obj_form = s.find("form", { "id": "createStudentForm" })
     if obj_form is None:
