@@ -36,3 +36,8 @@ def find_table(soup, header_query, exact=True):
                 return tables[i]
         except:
             continue
+
+
+def get_tag_text(parent):
+    # https://stackoverflow.com/a/30159450/408734
+    return ''.join(parent.find_all(text=True, recursive=False)).strip()

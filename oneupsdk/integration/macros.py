@@ -26,8 +26,24 @@ ONEUP_STUDENT_ATTRIBUTES_FORM = [
     ("uname", "id")
 ]
 
+ONEUP_ACTIVITY_ATTRIBUTES_FORM = [
+    ("activityID", "id"),
+    ("activityName", "name"),
+    ("points", "points"),
+    ("startTime", "start_time"),
+    ("endTime", "end_time"),
+    ("deadLine", "deadline"),
+    ("isGraded", "is_graded"),
+    ("fileUpload", "file_upload"),
+    ("attempts", "attempts"),
+    ("actFile", "file"),
+    ("description", "description"),
+    ("instructorNotes", "instructor_notes")
+]
+
 ONEUP_STUDENT_ATTRIBUTE_CAPTION_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_CAPTION)
 ONEUP_STUDENT_ATTRIBUTES_FORM_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_FORM)
+ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_FORM)
 
 
 ###############################################################################
@@ -291,5 +307,34 @@ def modify_student(user_id, email=None, password=None, first=None, last=None, ne
         data=payload)
 
     return r.status_code == 200
+
+
+###############################################################################
+# ACTIVITY METHODS
+###############################################################################
+
+def get_activity_categories():
+    # type: () -> list
+    """
+    Returns a list of the activity categories for the active course.
+    """
+    r = oneupsdk.integration.api.request("/oneUp/instructors/activitiesList")
+    if r is None or r.status_code != 200:
+        return []
+
+    s = _bs4.BeautifulSoup(r.content, features="html.parser")
+    o = s.find("select", { "name": "actCat" })
+    if o is None:
+        return []
+
+    raw_cats = o.find_all("option")
+    cats = []
+    for c in raw_cats:
+        if c.get("value") == "all":
+            continue
+
+        cats.append((int(c.get("value")), c.text))
+
+    return cats
 
 
