@@ -238,7 +238,7 @@ def get_student_by_username(username):
     return student_info
 
 
-def get_student_by_id(student_id):
+def get_student_by_id(user_id):
     # type: (int) -> _typing.Optional[dict]
     """
     Returns a student with the provided user ID, if such a student exists in the
@@ -249,7 +249,7 @@ def get_student_by_id(student_id):
         student.get("id") : student.get("username")
         for student in students
     }
-    student_username = id_to_username_mapping.get(student_id)
+    student_username = id_to_username_mapping.get(user_id)
 
     if student_username is None or student_username == "":
         return
@@ -299,25 +299,25 @@ def delete_student(user_id):
     return r.status_code == 200
 
 
-def modify_student(user_id, email=None, password=None, first=None, last=None, new_user_id=None):
+def modify_student(username, email=None, password=None, first=None, last=None, new_user_id=None):
     """
     Creates a new student and enrolls them in the active course.
     """
-    user_info = get_student_by_id(user_id=user_id)
+    user_info = get_student_by_username(username=username)
 
     if user_info is None:
         return False
 
     payload = {
-        "userID": user_info.get("id"),
-        "sUsernamePrev": user_info.get("id"),
+        "userID": user_info.get("username"),
+        "sUsernamePrev": user_info.get("username"),
         "sEmailPrev": user_info.get("email"),
 
         # Existing fields
         "firstname": user_info.get("first"),
         "lastname": user_info.get("last"),
         "email": user_info.get("email"),
-        "uname": user_info.get("id"),
+        "uname": user_info.get("username"),
         "pword": user_info.get("password"),
         "pword2": "",
     }
@@ -339,7 +339,6 @@ def modify_student(user_id, email=None, password=None, first=None, last=None, ne
     # add CSRF token
     payload["csrfmiddlewaretoken"] = oneupsdk.integration.api.get_csrf_token()
 
-    print(payload)
     r = oneupsdk.integration.api.request(
         endpoint="/oneUp/instructors/createStudentView",
         data=payload)
@@ -374,5 +373,128 @@ def get_activity_categories():
         cats.append((int(c.get("value")), c.text))
 
     return cats
+
+
+def post_activity_points(activity_id, data, as_dict=False):
+    # type: (int, _typing.Union[list, dict], bool) -> bool
+    """
+    Assign the points of a given activity for a set of students. The input data
+    can be presented in one of multiple forms: Either as a list of records:
+    ```python
+    [
+        { "username": "oneup_username", "points": 23 },
+        { "email": "student@university.edu", "points": 23 },
+        { "id": 413, "points": 23, "feedback": "Everything good!" },
+        ...
+    ]
+    ```
+    or as a dictionary:
+    ```python
+    {
+        "student@university.edu": 23.5
+    }
+    ```
+    """
+
+    r = oneupsdk.integration.api.request(
+        "/oneUp/instructors/activityAssignPointsForm?activityID={}".format(activity_id))
+    s = _bs4.BeautifulSoup(r.content, "html.parser")
+
+    # Extract the existing information (as it all must be submitted)
+
+    s_feedback = {
+        int(row.get("name").replace("student_Feedback", "")) : row.text
+        for row in s.find_all("textarea", { "id": "student_feedback" })
+    }
+    s_points = {
+        int(row.get("id").split("_")[0]) : row.get("value")
+        for row in s.find_all("input", { "type": "number" })
+    }
+    s_ids = s_points.keys()
+
+    # Create mapping to resolve input data
+
+    students = oneupsdk.integration.macros.get_enrolled_students()
+    id_to_username_mapping = dict()
+    username_to_id_mapping = dict()
+    email_to_id_mapping = dict()
+
+    for student in students:
+        student_id = student.get("id")
+        student_username = student.get("username")
+        student_email = student.get("email")
+
+        # Create mapping
+        id_to_username_mapping[student_id] = student_username
+        username_to_id_mapping[student_username] = student_id
+        email_to_id_mapping[student_email] = student_id
+
+    # Modify data based on input data
+
+    if as_dict:
+        # Data is given as { "username": points }
+
+        for str_id, points in data.items():
+
+            user_id = None
+
+            if "@" in str_id:
+                # Email
+                if str_id not in email_to_id_mapping:
+                    continue
+                user_id = email_to_id_mapping.get(str_id)
+            else:
+                # Username
+                if str_id not in username_to_id_mapping:
+                    continue
+                user_id = username_to_id_mapping.get(str_id)
+
+            s_points[user_id] = points
+
+    else:
+        # Data is given as [ { "username": "", "email": "", "feedback": "", "points": 0 }, ... ]
+
+        for record in data:
+
+            # Retrieve ID by order of preference
+            record_id = None
+            if "id" in record:
+                record_id = int(record.get("id"))
+
+            elif "email" in record and record.get("email") in email_to_id_mapping:
+                record_email = record.get("email")
+                record_id = email_to_id_mapping.get(record_email)
+
+            elif "username" in record and record.get("username") in username_to_id_mapping:
+                record_username = record.get("username")
+                record_id = username_to_id_mapping.get(record_username)
+
+            # Change points
+            if "points" in record:
+                s_points[record_id] = record["points"]
+
+            # Change feedback
+            if "feedback" in record:
+                s_feedback[record_id] = record["feedback"]
+
+    # Build payload to be sent
+
+    payload = {
+        "csrfmiddlewaretoken": oneupsdk.integration.api.get_csrf_token(),
+        "activityID": "{}".format(activity_id),
+        "submit": "",
+    }
+    for user_id in s_ids:
+        student_payload = {
+            "student_Points{}".format(user_id) : s_points.get(user_id),
+            "student_Feedback{}".format(user_id) : s_feedback.get(user_id),
+        }
+        payload.update(student_payload)
+
+    r = oneupsdk.integration.api.request(
+        endpoint="/oneUp/instructors/activityAssignPoints",
+        data=payload)
+
+    return r.status_code in [200, 302]
 
 
