@@ -23,7 +23,9 @@ ONEUP_STUDENT_ATTRIBUTES_FORM = [
     ("lastname", "last"),
     ("email", "email"),
     ("pword", "password"),
-    ("uname", "id")
+    ("uname", "username"),
+    # Added by Keith Irwin on 2020-02-16
+    ("student_internal_id", "id"),
 ]
 
 ONEUP_ACTIVITY_ATTRIBUTES_FORM = [
@@ -175,11 +177,21 @@ def get_enrolled_students():
             continue
 
         try:
-            user_id = row.find("input", { "name": "userID" }).get("value")
+            user_name = row.find("input", { "name": "userID" }).get("value")
+        except:
+            continue
+
+        # Added 2020-02-16 after adding field by Keith Irwin on forms
+        try:
+            user_id = row.find("input", { "name": "student_internal_id" }).get("value")
+            user_id = int(user_id)
+        except ValueError:
+            continue
         except:
             continue
 
         user_record = dict(zip(headers, columns))
+        user_record["username"] = user_name
         user_record["id"] = user_id
 
         students.append(user_record)
@@ -187,15 +199,15 @@ def get_enrolled_students():
     return students
 
 
-def get_student_by_id(user_id):
+def get_student_by_username(username):
     # type: (str) -> _typing.Optional[dict]
     """
-    Returns a student with the provided user ID, if such a student exists in the
+    Returns a student with the provided username, if such a student exists in the
     active course.
     """
 
     r = oneupsdk.integration.api.request(
-        "/oneUp/instructors/createStudentView?userID={}".format(user_id))
+        "/oneUp/instructors/createStudentView?userID={}".format(username))
 
     if r.status_code != 200:
         return
@@ -216,7 +228,33 @@ def get_student_by_id(user_id):
             internal_name = ONEUP_STUDENT_ATTRIBUTES_FORM_DICT.get(name)
             student_info[internal_name] = value
 
+    # Hackish: Try to convert ID to integer
+    if "id" in student_info:
+        try:
+            student_info["id"] = int(student_info["id"])
+        except ValueError:
+            pass
+
     return student_info
+
+
+def get_student_by_id(student_id):
+    # type: (int) -> _typing.Optional[dict]
+    """
+    Returns a student with the provided user ID, if such a student exists in the
+    active course.
+    """
+    students = oneupsdk.integration.get_enrolled_students()
+    id_to_username_mapping = {
+        student.get("id") : student.get("username")
+        for student in students
+    }
+    student_username = id_to_username_mapping.get(student_id)
+
+    if student_username is None or student_username == "":
+        return
+
+    return oneupsdk.integration.get_student_by_username(username=student_username)
 
 
 def add_student(email, password, first=None, last=None, user_id=None):
