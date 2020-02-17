@@ -512,7 +512,7 @@ def get_activity_by_id(activity_id):
     return activity_info
 
 
-def delete_activity_category(category_id=None):
+def delete_activity_category(category_id):
     # type: (int) -> bool
 
     """
@@ -734,5 +734,21 @@ def post_activity_points(activity_id, data, as_dict=False):
         data=payload)
 
     return r.status_code in [200, 302]
+
+
+def delete_activity(activity_id):
+    # type: (int) -> bool
+
+    """
+    Deletes an activity from the active course.
+    """
+    r = oneupsdk.integration.api.request(
+        endpoint="/oneUp/instructors/deleteActivity",
+        data={
+            "activityID": activity_id,
+            "csrfmiddlewaretoken": oneupsdk.integration.api.get_csrf_token()
+        })
+
+    return r.status_code == 200
 
 
