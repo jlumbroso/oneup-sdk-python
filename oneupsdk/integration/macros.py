@@ -39,13 +39,26 @@ ONEUP_ACTIVITY_ATTRIBUTES_FORM = [
     ("fileUpload", "file_upload"),
     ("attempts", "attempts"),
     ("actFile", "file"),
+    ("actCat", "category_id"),
     ("description", "description"),
     ("instructorNotes", "instructor_notes")
 ]
 
+ONEUP_ACTIVITY_CATEGORY_DEFAULT_NAME = "Uncategorized"
+
+ONEUP_ACTIVITY_DEFAULTS = {
+    "points": 100,
+    "start_time": "",
+    "end_time": "",
+    "deadline": "",
+    "is_graded": False,
+    "description": "",
+    "instructor_notes": "",
+}
+
 ONEUP_STUDENT_ATTRIBUTE_CAPTION_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_CAPTION)
 ONEUP_STUDENT_ATTRIBUTES_FORM_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_FORM)
-ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_FORM)
+ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT = dict(ONEUP_ACTIVITY_ATTRIBUTES_FORM)
 ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT = dict(map(lambda pair: (pair[1], pair[0]),
                                                 ONEUP_ACTIVITY_ATTRIBUTES_FORM))
 
@@ -351,6 +364,28 @@ def modify_student(username, email=None, password=None, first=None, last=None, n
 # ACTIVITY METHODS
 ###############################################################################
 
+def get_default_activity_category():
+    # type: () -> dict
+    """
+    Returns the default activity category.
+    """
+
+    # Get all activities
+    activities = oneupsdk.integration.macros.get_activity_categories()
+
+    # Find the default category (filter by name, then sort and take smallest ID)
+    default = sorted(
+        filter(lambda c: c.get("name") == oneupsdk.integration.macros.ONEUP_ACTIVITY_CATEGORY_DEFAULT_NAME,
+               activities),
+        key=lambda c: c.get("id")
+    )
+
+    if len(default) == 0:
+        raise ValueError("something wrong")
+
+    return default[0]
+
+
 def get_activity_categories():
     # type: () -> list
     """
@@ -413,7 +448,7 @@ def create_activity_category(name):
 
 
 def get_activity_by_id(activity_id):
-    # type: (str) -> _typing.Optional[dict]
+    # type: (int) -> _typing.Optional[dict]
     """
     Returns an activity with the provided activity ID, if such an activity exists in the
     active course.
@@ -447,14 +482,14 @@ def get_activity_by_id(activity_id):
 
     activity_info = {}
     for (name, value) in lst_fields:
-        if name in ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT:
-            internal_name = ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT.get(name)
+        if name in oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT:
+            internal_name = oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT.get(name)
             activity_info[internal_name] = value
 
     # Determine category
     obj_cat = obj_form.find("select").find("option", selected=True)
 
-    activity_info["category"] = int(obj_cat.get("value"))
+    activity_info["category_id"] = int(obj_cat.get("value"))
 
     # NOTE: unsupported currently
     if "file" in activity_info:
@@ -467,7 +502,115 @@ def get_activity_by_id(activity_id):
         except ValueError:
             pass
 
+    # Hackish: Try to convert points to integer
+    if "id" in activity_info:
+        try:
+            activity_info["points"] = int(activity_info["points"])
+        except ValueError:
+            pass
+
     return activity_info
+
+
+def delete_activity_category(category_id=None):
+    # type: (int) -> bool
+
+    """
+    Deletes an activity category from the active course.
+    """
+    r = oneupsdk.integration.api.request(
+        endpoint="/oneUp/instructors/activityCatsDelete",
+        data={
+            "catID": category_id,
+            "csrfmiddlewaretoken": oneupsdk.integration.api.get_csrf_token()
+        })
+
+    return r.status_code == 200
+
+
+def create_activity(name, **kwargs):
+    # type: (str, str) -> bool
+    """
+    Modify the properties of an existing activity.
+    """
+
+    payload = {
+        oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT.get(name): value
+        for (name, value) in oneupsdk.integration.macros.ONEUP_ACTIVITY_DEFAULTS.items()
+        if name in oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT
+        if type(value) is not bool or value
+    }
+    default_cat_id = oneupsdk.integration.macros.get_default_activity_category().get("id")
+    payload["actCat"] = default_cat_id
+
+    # NOTE: the names of the dict entries come from the FORM
+
+    changes = {
+        oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT.get(name): value
+        for (name, value) in kwargs.items()
+        if name in oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT
+        if type(value) is not bool or value
+    }
+    payload.update(changes)
+
+    payload["activityName"] = name
+
+    # add CSRF token
+    payload["csrfmiddlewaretoken"] = oneupsdk.integration.api.get_csrf_token()
+    payload["submit"] = ""
+
+    r = oneupsdk.integration.api.request(
+        endpoint="/oneUp/instructors/createActivity",
+        data=payload, multipart=True)
+
+    return r.status_code == 200
+
+
+def modify_activity(activity_id, **kwargs):
+    # type: (int, str) -> bool
+    """
+    Modify the properties of an existing activity.
+    """
+    activity_info = oneupsdk.integration.macros.get_activity_by_id(activity_id=activity_id)
+
+    if activity_info is None:
+        return False
+
+    payload = {
+        oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT.get(name): value
+        for (name, value) in activity_info.items()
+        if name in oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT
+        if type(value) is not bool or value
+    }
+
+    # NOTE: the names of the dict entries come from the FORM
+
+    changes = {
+        oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT.get(name): value
+        for (name, value) in kwargs.items()
+        if name in oneupsdk.integration.macros.ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT
+        if type(value) is not bool or value
+    }
+    payload.update(changes)
+
+    # if name is not None:
+    #     payload["activityName"] = name
+    # if total is not None:
+    #     payload["points"] = total
+    # if description is not None:
+    #     payload["description"] = description
+    # if notes is not None:
+    #     payload["instructorNotes"] = notes
+
+    # add CSRF token
+    payload["csrfmiddlewaretoken"] = oneupsdk.integration.api.get_csrf_token()
+    payload["submit"] = ""
+
+    r = oneupsdk.integration.api.request(
+        endpoint="/oneUp/instructors/createActivity",
+        data=payload, multipart=True)
+
+    return r.status_code == 200
 
 
 def post_activity_points(activity_id, data, as_dict=False):
