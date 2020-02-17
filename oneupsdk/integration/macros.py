@@ -46,7 +46,8 @@ ONEUP_ACTIVITY_ATTRIBUTES_FORM = [
 ONEUP_STUDENT_ATTRIBUTE_CAPTION_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_CAPTION)
 ONEUP_STUDENT_ATTRIBUTES_FORM_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_FORM)
 ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_FORM)
-
+ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT = dict(map(lambda pair: (pair[1], pair[0]),
+                                                ONEUP_ACTIVITY_ATTRIBUTES_FORM))
 
 ###############################################################################
 # COURSE METHODS
@@ -370,9 +371,103 @@ def get_activity_categories():
         if c.get("value") == "all":
             continue
 
-        cats.append((int(c.get("value")), c.text))
+        cats.append({
+            "id": int(c.get("value")),
+            "name": c.text,
+        })
 
     return cats
+
+
+def create_activity_category(name):
+    # type: (str) -> _typing.Optional[dict]
+    """
+    Creates a new activity category in the active course and returns its ID.
+    """
+
+    # Uses the presumption that IDs are creating in ascending order
+    # to be able to identify the activity category that was created
+
+    # Select existing activity categories, filter those who have
+    # the same name, and sort by decreasing IDs
+
+    existing_cats = sorted(filter(lambda c: c["name"] == name,
+                                  get_activity_categories()),
+                           key=lambda c: -c["id"])
+
+    r = oneupsdk.integration.api.request(
+        endpoint="/oneUp/instructors/activityCatsCreate",
+        data={
+            "catName": name,
+            "csrfmiddlewaretoken": oneupsdk.integration.api.get_csrf_token()
+        })
+
+    # Find categories with name and see if there is a new category
+
+    after_cats = sorted(filter(lambda c: c["name"] == name,
+                               get_activity_categories()),
+                        key=lambda c: -c["id"])
+
+    if r.status_code in [302, 200] and len(existing_cats) + 1 == len(after_cats):
+        return after_cats[0]
+
+
+def get_activity_by_id(activity_id):
+    # type: (str) -> _typing.Optional[dict]
+    """
+    Returns an activity with the provided activity ID, if such an activity exists in the
+    active course.
+    """
+
+    r = oneupsdk.integration.api.request(
+        "/oneUp/instructors/createActivity?activityID={}".format(activity_id))
+
+    if r.status_code != 200:
+        return
+
+    s = _bs4.BeautifulSoup(r.content, features="html.parser")
+
+    obj_form = s.find("form", { "id": "actForm" })
+    if obj_form is None:
+        return
+
+    def compute_value(field):
+        val = field.get("value")
+        if val is not None:
+            return val
+
+        if field.get("type") == "checkbox":
+            return field.get("checked") is not None
+
+        return field.text.strip()
+
+    lst_fields = list(
+        map(lambda field: (field.get("name"), compute_value(field)),
+            obj_form.find_all("input") + obj_form.find_all("textarea")))
+
+    activity_info = {}
+    for (name, value) in lst_fields:
+        if name in ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT:
+            internal_name = ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT.get(name)
+            activity_info[internal_name] = value
+
+    # Determine category
+    obj_cat = obj_form.find("select").find("option", selected=True)
+
+    activity_info["category"] = int(obj_cat.get("value"))
+
+    # NOTE: unsupported currently
+    if "file" in activity_info:
+        del activity_info["file"]
+
+    # Hackish: Try to convert ID to integer
+    if "id" in activity_info:
+        try:
+            activity_info["id"] = int(activity_info["id"])
+        except ValueError:
+            pass
+
+    return activity_info
 
 
 def post_activity_points(activity_id, data, as_dict=False):
