@@ -1,13 +1,19 @@
+# Root-level configuration file
+config.yaml
+.codepost-config.yaml
+
 # IDEA editor filess
 .idea
 
 # Sandbox Jupyter notebooks
-Sandbox*.ipynb
+*Sandbox*.ipynb
 .ipynb_checkpoints
 
 # don't judge me! :-)
 Untitled*.ipynb
 
+# macOS metadata
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -16,7 +16,18 @@ BASE_URL = "https://oneup.wssu.edu"
 LOGIN_URL = _six.moves.urllib.parse.urljoin(BASE_URL, "login")
 
 
+_override_username = None
+_override_password = None
+
 last_cookies = None
+
+
+def configure_auth(username=None, password=None):
+    """
+    Override the configuration file sourced authentication information.
+    """
+    _override_username = username
+    _override_password = password
 
 
 def get_auth_cookies(username=None, password=None, **kwargs):
@@ -72,8 +83,8 @@ def get_auth_cookies(username=None, password=None, **kwargs):
             data={
                 "csrfmiddlewaretoken": csrf_token,
                 "next": "/oneUp/courses",
-                "username": username or oneupsdk.integration.config["username"],
-                "password": password or oneupsdk.integration.config["password"],
+                "username": username or _override_username or oneupsdk.integration.config["username"],
+                "password": password or _override_password or oneupsdk.integration.config["password"],
                 "login": "Login",
             },
         )

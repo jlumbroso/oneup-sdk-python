@@ -271,7 +271,7 @@ def get_student_by_id(user_id):
     return oneupsdk.integration.get_student_by_username(username=student_username)
 
 
-def add_student(email, password, first=None, last=None, user_id=None):
+def add_student(email, password, first=None, last=None, username=None):
     # type: (str, str, _typing.Optional[str], _typing.Optional[str], _typing.Optional[str]) -> bool
     """
     Creates a new student and enrolls them in the active course.
@@ -290,7 +290,7 @@ def add_student(email, password, first=None, last=None, user_id=None):
             "firstname": first or "",
             "lastname": last or "",
             "email": email,
-            "uname": user_id or email,
+            "uname": username or email,
             "pword": password,
             "pword2": password,
         })
@@ -298,7 +298,7 @@ def add_student(email, password, first=None, last=None, user_id=None):
     return r.status_code == 200
 
 
-def delete_student(user_id):
+def delete_student(username):
     # type: (str) -> bool
     """
     Unenrolls a student from the active course.
@@ -306,7 +306,7 @@ def delete_student(user_id):
     r = oneupsdk.integration.api.request(
         endpoint="/oneUp/instructors/deleteStudent",
         data={
-            "userID": user_id,
+            "userID": username,
             "csrfmiddlewaretoken": oneupsdk.integration.api.get_csrf_token()
         })
 
