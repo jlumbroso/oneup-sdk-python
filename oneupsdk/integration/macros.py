@@ -414,7 +414,7 @@ def get_activity_categories():
     return cats
 
 
-def create_activity_category(name):
+def create_activity_category(name, xp_weight=1):
     # type: (str) -> _typing.Optional[dict]
     """
     Creates a new activity category in the active course and returns its ID.
@@ -434,7 +434,8 @@ def create_activity_category(name):
         endpoint="/oneUp/instructors/activityCatsCreate",
         data={
             "catName": name,
-            "csrfmiddlewaretoken": oneupsdk.integration.api.get_csrf_token()
+            "xpWeight": xp_weight,
+            "csrfmiddlewaretoken": oneupsdk.integration.api.get_csrf_token(),
         })
 
     # Find categories with name and see if there is a new category

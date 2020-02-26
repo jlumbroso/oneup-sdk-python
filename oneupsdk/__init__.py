@@ -55,21 +55,20 @@ class OneUpSDKConfigurationException(Exception):
 
 config = OneUpSDKConfiguration(APPNAME, __name__)
 
-
-def get_course_name():
-    try:
-        course = config["course"].get(str).lower()
-        return course
-    except:
-        pass
-
-
-def get_course_term():
-    try:
-        course = config["term"].get(str).lower()
-        return course
-    except:
-        pass
+# def get_course_name():
+#     try:
+#         course = config["course"].get(str).lower()
+#         return course
+#     except:
+#         pass
+#
+#
+# def get_course_term():
+#     try:
+#         course = config["term"].get(str).lower()
+#         return course
+#     except:
+#         pass
 
 
 def get_local_config(section, template):
@@ -84,3 +83,6 @@ def get_local_config(section, template):
         )
 
     return valid[section]
+
+
+from oneupsdk.integration.api import configure_auth
