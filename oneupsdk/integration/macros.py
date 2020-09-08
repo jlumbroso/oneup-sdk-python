@@ -457,6 +457,54 @@ def create_activity_category(name, xp_weight=1):
         return after_cats[0]
 
 
+def get_activities():
+    # type: () -> list
+    """
+    Returns a list of the activity categories for the active course.
+    """
+    r = oneupsdk.integration.api.request("/oneUp/instructors/activitiesList")
+    if r is None or r.status_code != 200:
+        return []
+
+    s = _bs4.BeautifulSoup(r.content, features="html.parser")
+
+    pane_tag = s.find("ul", {"id": "sortable-categories"})
+    if pane_tag is None:
+        return []
+
+    activity_tags = list(filter(
+        lambda tag: tag.get("id") is not None and tag.get("data-category-id") is not None,
+        pane_tag.find_all("li")))
+
+    activities = []
+    for tag in activity_tags:
+        activity_id = tag.get("id")
+        category_id = tag.get("data-category-id")
+        try:
+            divs = tag.find("div", {"class": "sortable-item"}).find_all("div")
+            divs_text = list(map(
+                lambda tag: tag.text.strip(),
+                divs,
+            ))
+        except:
+            divs_text = None
+
+        activity = {
+            "id": int(activity_id),
+            "category_id": int(category_id),
+        }
+        if divs_text is not None:
+            activity.update({
+                "name": divs_text[1],
+                "description": divs_text[2],
+                "points": float(divs_text[3].split(" Points")[0]),
+            })
+
+        activities.append(activity)
+
+    return activities
+
+
 def get_activity_by_id(activity_id):
     # type: (int) -> _typing.Optional[dict]
     """

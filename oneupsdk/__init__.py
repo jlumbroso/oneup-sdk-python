@@ -10,7 +10,7 @@ by West-Salem State University.
  Author: Jérémie Lumbroso
   Email: lumbroso@cs.princeton.edu
     URL: https://github.com/jlumbroso/oneup-sdk-python
-License: Copyright (c) 2020 Jérémie Lumbroso, licensed under the LGPL3 license
+License: Copyright (c) 2020 Jérémie Lumbroso, licensed under the LGPLv3 license
 """
 
 from __future__ import absolute_import
