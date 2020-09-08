@@ -62,6 +62,8 @@ ONEUP_ACTIVITY_ATTRIBUTES_FORM_DICT = dict(ONEUP_ACTIVITY_ATTRIBUTES_FORM)
 ONEUP_ACTIVITY_ATTRIBUTES_FORM_RDICT = dict(map(lambda pair: (pair[1], pair[0]),
                                                 ONEUP_ACTIVITY_ATTRIBUTES_FORM))
 
+ONEUP_COURSE_TITLE_PARSER = _re.compile("(?P<name>.*) \xa0 \((?P<university>.*)\)")
+
 ###############################################################################
 # COURSE METHODS
 ###############################################################################
@@ -87,7 +89,14 @@ def get_instructor_courses():
     for row in rows:
         try:
             course_caption = row.find("td").text
-            course_id = int(row.find("input", { "name": "courseID" })["value"])
+
+            # newly introduced: University marker
+            # <caption> \xa0 (<university>)
+            m = ONEUP_COURSE_TITLE_PARSER.match(course_caption)
+            if m is not None:
+                course_caption = m.group("name")
+
+            course_id = int(row.find("input", {"name": "courseID"})["value"])
             courses.append((course_id, course_caption))
         except ValueError:
             continue
