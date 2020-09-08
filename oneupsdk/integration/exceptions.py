@@ -40,7 +40,7 @@ def handle_api_error(res):
     data = {
         "url": res.url,
         "http_code": res.status_code,
-        "http_msg": res.content,
+        "http_msg": res.content.decode(),
         "json_msg": None,
     }
 
@@ -60,6 +60,12 @@ def handle_api_error(res):
     if res.status_code == 401 and "json_msg" in data and data["json_msg"]["message"] == "Missing token":
         raise OneUpAPIException(
             msg="Authentication token was not generated.",
+            **data,
+        )
+
+    if res.status_code == 500 and "http_msg" in data and "CourseConfigParams" in data["http_msg"]:
+        raise OneUpAPIException(
+            msg="Likely no course has been selected yet, use `set_active_course()` before any activity.",
             **data,
         )
 
