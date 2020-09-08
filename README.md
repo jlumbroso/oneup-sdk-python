@@ -38,6 +38,7 @@ Below are the macros that are available from the subpackage `oneupsdk.integratio
     - `delete_student(user_id)`
 
 - Activities
+    - `get_activities()` 
     - `get_activity_by_id(activity_id)`
     - `create_activity(name, **kwargs)`
     - `modify_activity(activity_id, **kwargs)`
