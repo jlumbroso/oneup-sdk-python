@@ -63,11 +63,14 @@ def handle_api_error(res):
             **data,
         )
 
-    if res.status_code == 500 and "http_msg" in data and "CourseConfigParams" in data["http_msg"]:
-        raise OneUpAPIException(
-            msg="Likely no course has been selected yet, use `set_active_course()` before any activity.",
-            **data,
-        )
+    # Detecting a very specific kind of error to provide helpful message
+    if res.status_code == 500 and "http_msg" in data:
+        if "<title>DoesNotExist" in data["http_msg"]:
+            if "CourseConfigParams matching query does not exist." in data["http_msg"]:
+                raise OneUpAPIException(
+                    msg="Likely no course has been selected yet, use `set_active_course()` before any activity.",
+                    **data,
+                )
 
     raise OneUpAPIException(
         msg="Unknown HTTP error, see source exception headers.",

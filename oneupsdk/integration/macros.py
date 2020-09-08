@@ -48,12 +48,14 @@ ONEUP_ACTIVITY_CATEGORY_DEFAULT_NAME = "Uncategorized"
 
 ONEUP_ACTIVITY_DEFAULTS = {
     "points": 100,
-    "start_time": "",
-    "end_time": "",
-    "deadline": "",
     "is_graded": False,
     "description": "",
     "instructor_notes": "",
+
+    # the project won't accept empty defaults -_-
+    "start_time": "01/19/2020 12:00 AM",  # "",
+    "end_time": "06/20/2028 12:00 AM",  # "",
+    "deadline": "06/20/2028 12:00 AM",  # "",
 }
 
 ONEUP_STUDENT_ATTRIBUTE_CAPTION_DICT = dict(ONEUP_STUDENT_ATTRIBUTES_CAPTION)
@@ -424,7 +426,7 @@ def get_activity_categories():
 
 
 def create_activity_category(name, xp_weight=1):
-    # type: (str) -> _typing.Optional[dict]
+    # type: (str, int) -> _typing.Optional[dict]
     """
     Creates a new activity category in the active course and returns its ID.
     """
@@ -586,8 +588,8 @@ def delete_activity_category(category_id):
     return r.status_code == 200
 
 
-def create_activity(name, **kwargs):
-    # type: (str, str) -> bool
+def create_activity(name, category_id=None, **kwargs):
+    # type: (str, str, str) -> bool
     """
     Modify the properties of an existing activity.
     """
@@ -600,6 +602,9 @@ def create_activity(name, **kwargs):
     }
     default_cat_id = oneupsdk.integration.macros.get_default_activity_category().get("id")
     payload["actCat"] = default_cat_id
+
+    if category_id is not None:
+        payload["actCat"] = category_id
 
     # NOTE: the names of the dict entries come from the FORM
 

@@ -40,7 +40,7 @@ Below are the macros that are available from the subpackage `oneupsdk.integratio
 - Activities
     - `get_activities()` 
     - `get_activity_by_id(activity_id)`
-    - `create_activity(name, **kwargs)`
+    - `create_activity(name, category_id=None, **kwargs)`
     - `modify_activity(activity_id, **kwargs)`
     - `post_activity_points(activity_id, data, as_dict=False)`
     - `delete_activity(activity_id)`
